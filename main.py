@@ -112,7 +112,7 @@ async def validation_exception_handler(request, exc):
     errors = []
     for error in exc.errors():
         errors.append({
-            "field": ".".join(map(str, error["loc"][1:])),  # Exclude "body"
+            "field": ".".join(map(str, error["loc"][1:])),  # Exclude "body new " 
             "message": error["msg"],
             "provided_value": error.get("input", None)
         })
