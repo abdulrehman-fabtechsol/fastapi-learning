@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  health_ai:
+    build: .
+    container_name: health_ai
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - .:/app  # Mount local files to the container for live reload
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - postgres_db
+      - redis
+    command: uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: abdulrehman
+      POSTGRES_PASSWORD: aszx1234
+      POSTGRES_DB: fastapi
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    restart: always
+    depends_on:
+      - health_ai
+      - redis
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    command: celery -A celery_app worker --loglevel=info --concurrency=20
+
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    restart: always
+    depends_on:
+      - health_ai
+      - redis
+    volumes:
+      - .:/app
+    command: celery -A cronjob beat --loglevel=info
+
+  flower:
+    image: mher/flower
+    container_name: flower
+    restart: always
+    depends_on:
+      - celery_worker
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+
+volumes:
+  postgres_data:
